@@ -35,8 +35,17 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly VERSION="1.0.0"
 readonly SCRIPT_NAME="$(basename "$0")"
 
+# Get real user home directory (works with sudo)
+if [ -n "$SUDO_USER" ]; then
+    REAL_USER="$SUDO_USER"
+    REAL_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+else
+    REAL_USER="$USER"
+    REAL_HOME="$HOME"
+fi
+
 # Default configuration file path (can be overridden with -c option)
-readonly DEFAULT_CONFIG_FILE="$HOME/.backup/config-system.yml"
+readonly DEFAULT_CONFIG_FILE="$REAL_HOME/.backup/config-system.yml"
 
 # Lock file to prevent concurrent executions
 readonly LOCK_FILE="/var/run/backup-system.lock"

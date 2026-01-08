@@ -25,9 +25,19 @@ set -o nounset
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-readonly DEFAULT_CONFIG_FILE="$HOME/.backup/config-hdd-both.yml"
 readonly SCRIPT_NAME="$(basename "$0")"
 readonly VERSION="1.0.0"
+
+# Get real user home directory (works with sudo)
+if [ -n "$SUDO_USER" ]; then
+    REAL_USER="$SUDO_USER"
+    REAL_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+else
+    REAL_USER="$USER"
+    REAL_HOME="$HOME"
+fi
+
+readonly DEFAULT_CONFIG_FILE="$REAL_HOME/.backup/config-hdd-both.yml"
 
 # Colors
 readonly C_GREEN='\033[0;32m'

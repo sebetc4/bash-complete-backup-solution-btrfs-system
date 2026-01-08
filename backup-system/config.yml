@@ -72,14 +72,6 @@ logging:
   retention: 5
 
 # ============================================================================
-# RESTORE SETTINGS
-# ============================================================================
-restore:
-  # Target disk for restoration (MODIFY according to your hardware!)
-  # ⚠️ WARNING: Will be ERASED during restoration!
-  target_disk: /dev/sda
-
-# ============================================================================
 # EXCLUSIONS
 # ============================================================================
 exclusions:
