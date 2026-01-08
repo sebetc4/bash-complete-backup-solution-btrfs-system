@@ -11,8 +11,8 @@
 # ============================================================================
 backup:
   # External backup HDD (already mounted automatically)
-  hdd_mount: /mnt/backup
-  backup_root: /mnt/backup/backups
+  hdd_mount: /mnt/hdd1
+  backup_root: /mnt/hdd1/backups
 
 # ============================================================================
 # SNAPSHOT SETTINGS (BTRFS Versioning)
@@ -24,29 +24,10 @@ snapshots:
   enabled: false
   
   # Where to store snapshots
-  directory: /mnt/backup/snapshots
+  directory: /mnt/hdd1/snapshots
   
   # Number of backup snapshots to keep
   retention: 4
-
-# ============================================================================
-# SOURCE SNAPSHOTS SYNC (Optional)
-# ============================================================================
-# Sync BTRFS snapshots from source partitions (/, /home)
-# These are Timeshift/snapper snapshots on your system
-source_snapshots:
-  # Enable/disable syncing source snapshots to backup
-  # When disabled, /.snapshots and /home/.snapshots are excluded
-  enabled: false
-  
-  # Maximum number of snapshots to sync per subvolume
-  # Set to -1 for unlimited (sync all)
-  # Recommended: 10-20 (latest snapshots)
-  max_per_subvolume: 10
-  
-  # Snapshot directories to sync (relative to each subvolume)
-  directories:
-    - .snapshots
 
 # ============================================================================
 # PATHS TO BACKUP
@@ -56,6 +37,7 @@ paths:
   home: /home
   code: /code
   vm: /vm          # Not backed up by default (too large)
+  ai: /ai          # Not backed up by default (too large)
   data: /data      # Separate disk (not backed up by default)
 
 # ============================================================================
@@ -70,6 +52,14 @@ logging:
   
   # Number of rotated log files to keep
   retention: 5
+
+# ============================================================================
+# RESTORE SETTINGS
+# ============================================================================
+restore:
+  # Target disk for restoration (MODIFY according to your hardware!)
+  # ⚠️ WARNING: Will be ERASED during restoration!
+  target_disk: /dev/nvme0n1
 
 # ============================================================================
 # EXCLUSIONS
@@ -87,7 +77,9 @@ exclusions:
     - /lost+found
     - /home/*          # Backed up separately
     - /code/*          # Backed up separately
+    - .snapshots       # BTRFS snapshots (rsync copies them as full data)
     - /vm/*            # Not backed up (too large)
+    - /ai/*            # Not backed up (too large)
     - /data/*          # Separate disk
     - /var/tmp/*
     - /var/cache/*
@@ -107,6 +99,7 @@ exclusions:
     - .cache
     - .local/share/Trash
     - .thumbnails
+    - .snapshots       # BTRFS snapshots (rsync copies them as full data)
     - Downloads
     - .mozilla/firefox/*/cache2
     - .mozilla/firefox/*/storage/default/*/cache

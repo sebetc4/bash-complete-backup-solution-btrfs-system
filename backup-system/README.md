@@ -19,7 +19,6 @@ Complete backup and restoration solution for Linux systems using BTRFS subvolume
 ### Backup Script (`backup.sh`)
 - **Incremental backups** with rsync to external HDD
 - **BTRFS snapshots** (optional) with configurable retention
-- **Source snapshots sync** (optional) - sync Timeshift/snapper snapshots with configurable limit
 - **Atomic consistency** via read-only snapshots during backup
 - **Smart exclusions** for caches, temporary files, and large datasets
 - **Log rotation** with configurable size limit
@@ -93,11 +92,6 @@ snapshots:
   directory: /mnt/hdd1/snapshots
   retention: 4
 
-# Source snapshots sync (Timeshift/snapper)
-source_snapshots:
-  enabled: false           # Sync /.snapshots and /home/.snapshots
-  max_per_subvolume: 10    # Limit per subvolume (prevents huge backups)
-
 # Logging with rotation
 logging:
   file: /var/log/backup-system.log
@@ -111,22 +105,7 @@ exclusions:
   code: [...]
 ```
 
-### Source Snapshots Sync
-
-By default, `/.snapshots` and `/home/.snapshots` (Timeshift/snapper snapshots) are **excluded** from backup to avoid backing up potentially 50+ snapshots per subvolume.
-
-**To enable syncing**:
-
-```yaml
-source_snapshots:
-  enabled: true
-  max_per_subvolume: 10  # Only sync the 10 most recent
-```
-
-This will:
-- Include snapshots in the backup
-- Limit to the N most recent snapshots (newest first)
-- Sync them to `$BACKUP_ROOT/root/.snapshots/` and `$BACKUP_ROOT/home/.snapshots/`
+**Note**: `.snapshots` directories (Timeshift/snapper) are excluded from backups because rsync doesn't understand BTRFS Copy-on-Write and would copy each snapshot as full data, multiplying the backup size.
 
 ---
 
@@ -244,23 +223,6 @@ ps aux | grep backup.sh
 sudo rm /var/run/backup-system.lock
 ```
 
-### Source snapshots too large
-
-Reduce `max_per_subvolume` in config:
-
-```yaml
-source_snapshots:
-  enabled: true
-  max_per_subvolume: 5  # Only 5 most recent
-```
-
-Or disable entirely:
-
-```yaml
-source_snapshots:
-  enabled: false
-```
-
 ---
 
 ## 📁 Files
@@ -277,5 +239,5 @@ backup-system/
 
 ---
 
-**Version**: 3.2  
+**Version**: 1.0
 **Last Updated**: January 8, 2026

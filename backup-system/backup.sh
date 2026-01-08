@@ -12,7 +12,6 @@
 #   - Versioned BTRFS snapshots
 #   - YAML-based configuration
 #   - Log rotation with size limit
-#   - Optional source snapshots sync with configurable limit
 #
 # Usage:
 #   sudo ./backup.sh [OPTIONS]
@@ -153,10 +152,6 @@ load_config() {
     SNAPSHOT_DIR=$(parse_yaml "snapshots.directory")
     SNAPSHOT_RETENTION=$(parse_yaml "snapshots.retention")
     
-    # Source snapshots sync
-    SYNC_SOURCE_SNAPSHOTS=$(parse_yaml "source_snapshots.enabled")
-    SOURCE_SNAPSHOT_MAX=$(parse_yaml "source_snapshots.max_per_subvolume")
-    
     # Logging
     LOG_FILE=$(parse_yaml "logging.file")
     LOG_MAX_SIZE_MB=$(parse_yaml "logging.max_size_mb")
@@ -168,8 +163,6 @@ load_config() {
     # Set defaults if empty
     [ -z "$ENABLE_SNAPSHOTS" ] && ENABLE_SNAPSHOTS="false"
     [ -z "$SNAPSHOT_RETENTION" ] && SNAPSHOT_RETENTION=4
-    [ -z "$SYNC_SOURCE_SNAPSHOTS" ] && SYNC_SOURCE_SNAPSHOTS="false"
-    [ -z "$SOURCE_SNAPSHOT_MAX" ] && SOURCE_SNAPSHOT_MAX=10
     [ -z "$LOG_MAX_SIZE_MB" ] && LOG_MAX_SIZE_MB=50
     [ -z "$LOG_RETENTION" ] && LOG_RETENTION=5
     [ -z "$LOG_FILE" ] && LOG_FILE="/var/log/backup-system.log"
@@ -223,11 +216,9 @@ validate_config() {
     
     # Validate booleans
     validate_boolean "snapshots.enabled" "$ENABLE_SNAPSHOTS"
-    validate_boolean "source_snapshots.enabled" "$SYNC_SOURCE_SNAPSHOTS"
     
     # Validate integers
     validate_integer "snapshots.retention" "$SNAPSHOT_RETENTION"
-    validate_integer "source_snapshots.max_per_subvolume" "$SOURCE_SNAPSHOT_MAX"
     validate_integer "logging.max_size_mb" "$LOG_MAX_SIZE_MB"
     validate_integer "logging.retention" "$LOG_RETENTION"
     
@@ -247,10 +238,6 @@ validate_config() {
     
     if [ "$SNAPSHOT_RETENTION" -lt 1 ] 2>/dev/null; then
         warnings+=("snapshots.retention should be at least 1")
-    fi
-    
-    if [ "$SOURCE_SNAPSHOT_MAX" -lt 1 ] 2>/dev/null; then
-        warnings+=("source_snapshots.max_per_subvolume should be at least 1")
     fi
     
     # Show results
@@ -400,13 +387,6 @@ ${GREEN}Configuration:${NC}
     - Exclusions
     - Snapshot retention
     - Log rotation settings
-    - Source snapshot sync options
-
-${GREEN}Source Snapshots:${NC}
-    When source_snapshots.enabled=true, the script syncs BTRFS snapshots
-    from / and /home (e.g., Timeshift snapshots).
-    
-    Set max_per_subvolume to limit the number of snapshots synced.
 
 ${GREEN}Examples:${NC}
     # Normal backup
@@ -513,7 +493,6 @@ main() {
     info "Date: $(date '+%A %d %B %Y, %H:%M:%S')"
     info "Configuration: $CONFIG_FILE"
     info "Destination: $BACKUP_MOUNT"
-    info "Source snapshots sync: $SYNC_SOURCE_SNAPSHOTS (max: $SOURCE_SNAPSHOT_MAX per subvolume)"
     info ""
     
     # Check if HDD is mounted
@@ -733,17 +712,10 @@ SYSINFO
         EXCLUSIONS_CODE+=("--exclude=$excl")
     done < <(parse_yaml_array "exclusions.code")
     
-    # Always exclude .snapshots from main rsync
-    # If source_snapshots sync is enabled, they will be synced separately with limit
-    # If disabled, they won't be synced at all
+    # Always exclude .snapshots - syncing them via rsync would copy full data
+    # (rsync doesn't understand BTRFS CoW, each snapshot = full copy)
     EXCLUSIONS_HOME+=("--exclude=.snapshots")
     EXCLUSIONS_SYSTEM+=("--exclude=.snapshots")
-    
-    if [ "$SYNC_SOURCE_SNAPSHOTS" != "true" ]; then
-        info "Source snapshots sync disabled - .snapshots directories excluded"
-    else
-        info "Source snapshots will be synced separately (limit: $SOURCE_SNAPSHOT_MAX per subvolume)"
-    fi
     
     # ========================================================================
     # BACKUP /home
@@ -822,87 +794,6 @@ SYSINFO
         success "Backup /code completed"
     else
         info "/code empty or doesn't exist, skipping"
-    fi
-    
-    # ========================================================================
-    # SYNC SOURCE SNAPSHOTS (Optional)
-    # ========================================================================
-    if [ "$SYNC_SOURCE_SNAPSHOTS" = "true" ]; then
-        section "SYNC SOURCE SNAPSHOTS"
-        
-        info "Syncing BTRFS snapshots from source partitions..."
-        info "Maximum per subvolume: $SOURCE_SNAPSHOT_MAX"
-        
-        # Sync root snapshots
-        if [ -d "/.snapshots" ]; then
-            log "Syncing root snapshots from /.snapshots/"
-            mkdir -p "$BACKUP_ROOT/root/.snapshots"
-            
-            # Get list of snapshots, sorted by modification time (newest first)
-            local snap_count=0
-            local synced_count=0
-            
-            while IFS= read -r snap_dir; do
-                [ -z "$snap_dir" ] && continue
-                snap_count=$((snap_count + 1))
-                
-                if [ "$SOURCE_SNAPSHOT_MAX" -gt 0 ] && [ "$synced_count" -ge "$SOURCE_SNAPSHOT_MAX" ]; then
-                    info "Skipping older snapshot: $(basename "$snap_dir") (limit reached)"
-                    continue
-                fi
-                
-                local snap_name
-                snap_name=$(basename "$snap_dir")
-                log "  Syncing: $snap_name"
-                
-                if [ "$DRY_RUN" = false ]; then
-                    rsync_safe $RSYNC_OPTIONS "$snap_dir/" "$BACKUP_ROOT/root/.snapshots/$snap_name/" 2>&1 | tee -a "$LOG_FILE"
-                fi
-                
-                synced_count=$((synced_count + 1))
-            done < <(ls -1td /.snapshots/*/ 2>/dev/null | head -n "$SOURCE_SNAPSHOT_MAX")
-            
-            success "Synced $synced_count/$snap_count root snapshots"
-        else
-            info "No root snapshots found at /.snapshots"
-        fi
-        
-        # Sync home snapshots
-        if [ -d "/home/.snapshots" ]; then
-            log "Syncing home snapshots from /home/.snapshots/"
-            mkdir -p "$BACKUP_ROOT/home/.snapshots"
-            
-            local snap_count=0
-            local synced_count=0
-            
-            while IFS= read -r snap_dir; do
-                [ -z "$snap_dir" ] && continue
-                snap_count=$((snap_count + 1))
-                
-                if [ "$SOURCE_SNAPSHOT_MAX" -gt 0 ] && [ "$synced_count" -ge "$SOURCE_SNAPSHOT_MAX" ]; then
-                    info "Skipping older snapshot: $(basename "$snap_dir") (limit reached)"
-                    continue
-                fi
-                
-                local snap_name
-                snap_name=$(basename "$snap_dir")
-                log "  Syncing: $snap_name"
-                
-                if [ "$DRY_RUN" = false ]; then
-                    rsync_safe $RSYNC_OPTIONS "$snap_dir/" "$BACKUP_ROOT/home/.snapshots/$snap_name/" 2>&1 | tee -a "$LOG_FILE"
-                fi
-                
-                synced_count=$((synced_count + 1))
-            done < <(ls -1td /home/.snapshots/*/ 2>/dev/null | head -n "$SOURCE_SNAPSHOT_MAX")
-            
-            success "Synced $synced_count/$snap_count home snapshots"
-        else
-            info "No home snapshots found at /home/.snapshots"
-        fi
-    else
-        info ""
-        info "NOTE: Source snapshots sync is disabled"
-        info "To enable, set 'source_snapshots.enabled: true' in config"
     fi
     
     # ========================================================================
