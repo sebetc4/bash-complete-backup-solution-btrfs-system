@@ -1,0 +1,41 @@
+# ============================================================================
+# RESTORE CONFIGURATION
+# ============================================================================
+# This config file is meant to be used with restore.sh from a Live USB.
+# Place it in the same directory as restore.sh or on the backup HDD.
+#
+# Unlike backup configs, this does NOT go in ~/.backup/ since restore.sh
+# runs from a bootable USB before the system is installed.
+# ============================================================================
+
+# Backup source location
+backup:
+  # Where the backup HDD is mounted
+  hdd_mount: /mnt/backup
+  
+  # Root directory of backups on the HDD
+  backup_root: /mnt/backup/backups
+
+# Restoration target (for --full-disk mode only)
+restore:
+  # Target disk to restore TO (will be COMPLETELY ERASED in full-disk mode)
+  # Examples: /dev/sda, /dev/sdb
+  # ⚠️ DANGER: Make sure this is the correct disk!
+  target_disk: /dev/sda
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# 
+# FULL-DISK MODE (--full-disk):
+#   - Uses restore.target_disk to erase and partition
+#   - Creates: EFI (210MB) + Boot (2GB) + LUKS (rest)
+#   - All data on target disk will be destroyed
+#
+# PARTITION MODE (--partitions):
+#   - Ignores restore.target_disk
+#   - Prompts interactively for partition selection
+#   - Preserves EFI partition (Windows Boot Manager)
+#   - Only formats /boot and LUKS partitions
+#
+# ============================================================================

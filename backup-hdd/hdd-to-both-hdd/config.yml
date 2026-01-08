@@ -1,0 +1,111 @@
+# ============================================================================
+# HDD Split Backup Configuration
+# ============================================================================
+# This config allows backing up different folders from a source drive to
+# two separate backup drives.
+#
+# Use case: Split large backup across two drives, or backup critical data
+# to one drive and media to another.
+# ============================================================================
+
+# Source drive
+source:
+  path: /mnt/storage
+  label: Storage  # Optional friendly name
+
+# Backup Drive 1
+backup_drive_1:
+  path: /mnt/backup1
+  label: Backup1  # Optional friendly name
+  
+  # Folders to backup to this drive
+  folders:
+    # Example 1: Backup specific subfolders only
+    - path: Documents
+      subfolders:
+        - Personal
+        - Work
+    
+    # Example 2: Backup entire folder
+    - path: Photos
+      subfolders:
+        - 2023
+        - 2024
+  
+  # Snapshots (optional, requires BTRFS)
+  snapshots:
+    enabled: false
+    directory: .snapshots
+    retention: 3
+    prefix: backup
+
+# Backup Drive 2
+backup_drive_2:
+  path: /mnt/backup2
+  label: Backup2  # Optional friendly name
+  
+  # Folders to backup to this drive (can be different from drive 1)
+  folders:
+    # Backup full folders
+    - path: Music
+    - path: Videos
+  
+  # Snapshots (optional, requires BTRFS)
+  snapshots:
+    enabled: false
+    directory: .snapshots
+    retention: 3
+    prefix: backup
+
+# Global exclusions (applied to all backups)
+exclude:
+  - "*.tmp"
+  - "*.cache"
+  - ".Trash-*"
+  - "lost+found"
+
+# Rsync options
+rsync:
+  delete: true          # Delete files in destination not in source
+  progress: true        # Show progress during transfer
+  compress: false       # Network compression (usually not needed for local)
+  archive: true         # Preserve permissions, timestamps, etc.
+
+# BTRFS options
+btrfs:
+  scrub_after_backup: false          # Run integrity check after backup
+  show_compression_stats: false      # Show compression statistics
+
+# Logging
+logging:
+  file: /var/log/backup-hdd-both.log
+  max_size_mb: 50      # Rotate when log exceeds this size
+  retention: 5         # Keep this many rotated log files
+
+# Safety options
+safety:
+  confirm_before_start: true    # Ask for confirmation before starting
+  check_disk_space: true        # Verify sufficient space before backup
+  dry_run: false                # Simulate without making changes
+
+# ============================================================================
+# NOTES
+# ============================================================================
+#
+# Folder Configuration:
+#   - path: Main folder name (relative to source.path)
+#   - subfolders: (optional) List of subfolders to backup
+#   - If no subfolders specified, entire folder is backed up
+#
+# Example Use Cases:
+#   1. Critical data to Drive 1, media to Drive 2
+#   2. Recent files to Drive 1, archives to Drive 2
+#   3. Selective backup of large folder trees
+#
+# Drive Selection:
+#   Use -d option to backup to specific drive:
+#   - backup.sh -d 1       # Backup to drive 1 only
+#   - backup.sh -d 2       # Backup to drive 2 only
+#   - backup.sh -d both    # Backup to both drives (default)
+#
+# ============================================================================

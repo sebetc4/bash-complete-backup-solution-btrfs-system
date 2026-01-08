@@ -1,0 +1,33 @@
+# BTRFS Backup Configuration Example
+#
+# This is an example configuration file for backup-hdd-btrfs.sh
+# Copy this file to ~/.backup/backup-hdd.yml and customize it for your setup
+
+source:
+  dir: /mnt/source
+
+backup_drive_1:
+  dir: /mnt/backup1
+  luks_device: /dev/sda1  # LUKS encrypted partition for backup drive 1
+  compression_level: 9  # BTRFS zstd compression level (1-15, default: 3, recommended: 9)
+  folders:
+    # Backup specific subfolders only
+    - path: Documents
+      subfolders:
+        - Work
+        - Projects
+    - path: Photos
+      subfolders:
+        - 2024
+        - 2025
+
+backup_drive_2:
+  dir: /mnt/backup2
+  luks_device: /dev/sdb1  # LUKS encrypted partition for backup drive 2
+  compression_level: 9  # BTRFS zstd compression level (1-15, default: 3, recommended: 9)
+  folders:
+    # Backup entire folders
+    - path: Documents
+    - path: Photos
+    - path: Music
+    - path: Videos

@@ -1,0 +1,104 @@
+# ============================================================================
+# HDD BACKUP CONFIGURATION
+# ============================================================================
+# Simple 1:1 backup from HDD1 to Backup1
+# Default location: ~/.backup/config-hdd.yml
+# Modified on: 2026-01-08
+# ============================================================================
+
+# ============================================================================
+# SOURCE DRIVE (active storage)
+# ============================================================================
+source:
+  path: /mnt/storage
+  label: "Storage (4TB)"
+
+# ============================================================================
+# BACKUP DRIVE (cold storage mirror)
+# ============================================================================
+backup:
+  path: /mnt/backup
+  label: "Backup (4TB)"
+
+# ============================================================================
+# DIRECTORIES TO BACKUP
+# ============================================================================
+# Directories to backup (relative to source path)
+# Use "/" or leave empty to backup entire drive
+directories:
+  - /  # Entire drive
+
+# Directories to exclude from backup
+exclude:
+  - ".Trash-*"
+  - "lost+found"
+  - ".snapshots"
+
+# ============================================================================
+# SNAPSHOT OPTIONS (Optional)
+# ============================================================================
+# BTRFS snapshots of source drive before backup
+snapshots:
+  # Enable/disable snapshots before backup
+  enabled: false
+  
+  # Where to store snapshots (relative to source path)
+  directory: ".snapshots"
+  
+  # Number of snapshots to keep (older ones auto-deleted)
+  retention: 3
+  
+  # Snapshot naming format (date will be appended)
+  prefix: "backup"
+
+# ============================================================================
+# RSYNC OPTIONS
+# ============================================================================
+rsync:
+  # Delete files in destination not present in source
+  delete: true
+  
+  # Show progress during transfer
+  progress: true
+  
+  # Compress during transfer (not needed for local backup)
+  compress: false
+  
+  # Preserve all attributes
+  archive: true
+
+# ============================================================================
+# BTRFS OPTIONS
+# ============================================================================
+btrfs:
+  # Run scrub after backup (integrity check)
+  scrub_after_backup: false
+  
+  # Show compression statistics after backup
+  show_compression_stats: false
+
+# ============================================================================
+# LOGGING
+# ============================================================================
+logging:
+  # Log file path (empty = no file logging, console only)
+  file: ""
+  
+  # Maximum log file size in MB before rotation
+  max_size_mb: 50
+  
+  # Number of rotated log files to keep
+  retention: 5
+
+# ============================================================================
+# SAFETY OPTIONS
+# ============================================================================
+safety:
+  # Require confirmation before starting backup
+  confirm_before_start: true
+  
+  # Check disk space before backup
+  check_disk_space: true
+  
+  # Dry run mode (simulate without making changes)
+  dry_run: false

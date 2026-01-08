@@ -1,0 +1,168 @@
+# ============================================================================
+# SYSTEM BACKUP CONFIGURATION
+# ============================================================================
+# Configuration file for backup and restoration scripts
+# Default location: ~/.backup/config-system.yml
+# Modified on: 2026-01-08
+# ============================================================================
+
+# ============================================================================
+# BACKUP SETTINGS
+# ============================================================================
+backup:
+  # External backup HDD (already mounted automatically)
+  hdd_mount: /mnt/backup
+  backup_root: /mnt/backup/backups
+
+# ============================================================================
+# SNAPSHOT SETTINGS (BTRFS Versioning)
+# ============================================================================
+# These are snapshots of the BACKUP destination for versioning
+snapshots:
+  # Enable/disable BTRFS snapshots of backup destination
+  # Requires backup_root to be a BTRFS subvolume
+  enabled: false
+  
+  # Where to store snapshots
+  directory: /mnt/backup/snapshots
+  
+  # Number of backup snapshots to keep
+  retention: 4
+
+# ============================================================================
+# SOURCE SNAPSHOTS SYNC (Optional)
+# ============================================================================
+# Sync BTRFS snapshots from source partitions (/, /home)
+# These are Timeshift/snapper snapshots on your system
+source_snapshots:
+  # Enable/disable syncing source snapshots to backup
+  # When disabled, /.snapshots and /home/.snapshots are excluded
+  enabled: false
+  
+  # Maximum number of snapshots to sync per subvolume
+  # Set to -1 for unlimited (sync all)
+  # Recommended: 10-20 (latest snapshots)
+  max_per_subvolume: 10
+  
+  # Snapshot directories to sync (relative to each subvolume)
+  directories:
+    - .snapshots
+
+# ============================================================================
+# PATHS TO BACKUP
+# ============================================================================
+paths:
+  system_root: /
+  home: /home
+  code: /code
+  vm: /vm          # Not backed up by default (too large)
+  data: /data      # Separate disk (not backed up by default)
+
+# ============================================================================
+# LOGGING
+# ============================================================================
+logging:
+  # Log file path
+  file: /var/log/backup-system.log
+  
+  # Maximum log file size in MB before rotation
+  max_size_mb: 50
+  
+  # Number of rotated log files to keep
+  retention: 5
+
+# ============================================================================
+# RESTORE SETTINGS
+# ============================================================================
+restore:
+  # Target disk for restoration (MODIFY according to your hardware!)
+  # ⚠️ WARNING: Will be ERASED during restoration!
+  target_disk: /dev/sda
+
+# ============================================================================
+# EXCLUSIONS
+# ============================================================================
+exclusions:
+  # Exclusions for / backup
+  system:
+    - /dev/*
+    - /proc/*
+    - /sys/*
+    - /tmp/*
+    - /run/*
+    - /mnt/*
+    - /media/*
+    - /lost+found
+    - /home/*          # Backed up separately
+    - /code/*          # Backed up separately
+    - /vm/*            # Not backed up (too large)
+    - /data/*          # Separate disk
+    - /var/tmp/*
+    - /var/cache/*
+    - /var/log/journal/*
+    - /var/lib/systemd/coredump/*
+    - /var/lib/docker/*        # Docker volumes (recreatable)
+    - /var/lib/containers/*    # Podman containers
+    - /var/lib/flatpak/repo/*  # Flatpak cache (reinstallable)
+    - swapfile
+    - "*.swp"           # Vim swap files
+    - "*.lock"          # Lock files
+    - .nfs*             # NFS temp files
+  
+  # Exclusions for /home backup
+  home:
+    - lost+found
+    - .cache
+    - .local/share/Trash
+    - .thumbnails
+    - Downloads
+    - .mozilla/firefox/*/cache2
+    - .mozilla/firefox/*/storage/default/*/cache
+    - .config/google-chrome/*/Cache
+    - .config/chromium/*/Cache
+    - .var/app/*/cache
+    - .local/share/baloo
+    - .local/share/akonadi
+    - .local/share/gvfs-metadata
+    - "*.tmp"
+    - "*.swp"
+    - .nfs*
+  
+  # Exclusions for /code backup
+  code:
+    - node_modules
+    - target
+    - build
+    - dist
+    - .git/objects
+    - __pycache__
+    - "*.pyc"
+    - .venv
+    - venv
+    - .pytest_cache
+    - .mypy_cache
+
+# ============================================================================
+# NOTIFICATIONS
+# ============================================================================
+notifications:
+  # Desktop notifications
+  enabled: true
+  on_success: true
+  on_error: true
+
+# ============================================================================
+# ADVANCED OPTIONS
+# ============================================================================
+advanced:
+  # Rsync options
+  # Note: --no-xattrs avoids SELinux attribute errors on non-SELinux filesystems
+  # --partial keeps partially transferred files for resumability
+  # --timeout=300 prevents hanging on unresponsive files
+  rsync_options: "-aAXHv --info=progress2 --no-xattrs --partial --timeout=300"
+  
+  # Enable scrub (activate with --scrub)
+  enable_scrub: false
+  
+  # Enable stats (activate with --stats)
+  enable_stats: false
