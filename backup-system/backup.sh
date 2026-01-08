@@ -733,11 +733,16 @@ SYSINFO
         EXCLUSIONS_CODE+=("--exclude=$excl")
     done < <(parse_yaml_array "exclusions.code")
     
-    # Add .snapshots exclusion if source snapshot sync is disabled
+    # Always exclude .snapshots from main rsync
+    # If source_snapshots sync is enabled, they will be synced separately with limit
+    # If disabled, they won't be synced at all
+    EXCLUSIONS_HOME+=("--exclude=.snapshots")
+    EXCLUSIONS_SYSTEM+=("--exclude=.snapshots")
+    
     if [ "$SYNC_SOURCE_SNAPSHOTS" != "true" ]; then
-        EXCLUSIONS_HOME+=("--exclude=.snapshots")
-        EXCLUSIONS_SYSTEM+=("--exclude=.snapshots")
-        info "Source snapshots sync disabled - excluding .snapshots directories"
+        info "Source snapshots sync disabled - .snapshots directories excluded"
+    else
+        info "Source snapshots will be synced separately (limit: $SOURCE_SNAPSHOT_MAX per subvolume)"
     fi
     
     # ========================================================================
